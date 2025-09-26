@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logr — Deal-Speed Time Logging</title>
+  <style>
+    :root{
+      --blue:#1a5be6; --teal:#10a37f; --amber:#fbbf24; --red:#e11d48; --ink:#111827; --muted:#6b7280; --bg:#f8fafc;
+      --card:#ffffff; --radius:14px;
+    }
+    html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    .container{max-width:920px;margin:32px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.05);padding:20px}
+    h1{font-size:28px;margin:0 0 12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    input,select,button{border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;font:inherit}
+    input,select{background:#fff;min-width:200px}
+    button{cursor:pointer;background:#fff}
+    .btnPrimary{background:var(--blue);color:#fff;border-color:transparent}
+    .btn{padding:10px 14px;border-radius:12px}
+    .badge{display:inline-flex;gap:8px;align-items:center;border-radius:999px;padding:6px 10px;font-weight:600}
+    .muted{color:var(--muted)}
+    .stack{display:grid;gap:12px}
+    .spacer{height:8px}
+    .toast{background:#111827;color:#fff;padding:10px 12px;border-radius:12px}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card stack">
+    <h1>Logr</h1>
+
+    <!-- LOGIN -->
+    <div id="loginSection" class="stack">
+      <div class="row">
+        <input id="email" placeholder="Email" value="demo@logr.app" />
+        <input id="password" placeholder="Password" type="password" value="demo" />
+        <button class="btn btnPrimary" id="loginBtn">Login</button>
+      </div>
+      <div class="muted" id="loginMsg"></div>
+    </div>
+
+    <!-- APP -->
+    <div id="appSection" class="stack" style="display:none">
+      <div class="row">
+        <select id="matterSelect"></select>
+        <div id="wipBadge" class="badge muted">WIP: —</div>
+      </div>
+
+      <div class="row">
+        <button class="btn btnPrimary" id="clockInBtn">Clock In</button>
+        <button class="btn" id="clockOutBtn">Clock Out</button>
+        <button class="btn" id="quickBtn">+1h Quick Log</button>
+
+        <select id="activitySelect" title="Activity">
+          <option>Analysis</option>
+          <option>Onboarding</option>
+          <option>Compliance</option>
+          <option>Admin</option>
+          <option>Meeting</option>
+        </select>
+      </div>
+
+      <div id="toast" class="toast" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ====== CONFIG ======
+  // GitHub Pages is HTTPS, so your API must also be HTTPS (use Railway/Render/Ngrok).
+  const API_BASE = "https://YOUR-API.example.com"; // <-- change this
+
+  // ====== STATE ======
+  let token = localStorage.getItem("logr_token") || null;
+  let runningEntryId = null;
+
+  // ====== UTILS ======
+  const qs = (sel) => document.querySelector(sel);
+  const show = (el, yes) => el.style.display = yes ? "" : "none";
+  const toast = (msg) => {
+    const t = qs("#toast"); t.textContent = msg; show(t, true);
+    clearTimeout(toast._t); toast._t = setTimeout(()=>show(t,false), 2000);
+  };
+  const authHeader = () => token ? { "Authorization": "Bearer " + token } : {};
+  async function http(path, opts={}) {
+    const res = await fetch(API_BASE + path, {
+      ...opts,
+      headers: { "Content-Type":"application/json", ...(opts.headers||{}), ...authHeader() }
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const ct = res.headers.get("content-type")||"";
+    return ct.includes("application/json") ? res.json() : res.text();
+  }
+
+  // ====== LOGIN FLOW ======
+  async function login() {
+    const email = qs("#email").value.trim();
+    const password = qs("#password").value.trim();
+    try {
+      const data = await http("/auth/login", { method:"POST", body: JSON.stringify({ email, password }) });
+      token = data.token; localStorage.setItem("logr_token", token);
+      qs("#loginMsg").textContent = "Logged in";
+      await initApp();
+    } catch (e) {
+      qs("#loginMsg").textContent = "Login failed: " + e.message;
+    }
+  }
+
+  // ====== APP INIT ======
+  async function initApp() {
+    show(qs("#loginSection"), !token);
+    show(qs("#appSection"), !!token);
+    if (!token) return;
+
+    // load matters
+    const matters = await http("/matters");
+    const sel = qs("#matterSelect");
+    sel.innerHTML = "";
+    for (const m of matters) {
+      const opt = document.createElement("option");
+      opt.value = m.id; opt.textContent = m.code;
+      sel.appendChild(opt);
+    }
+    if (matters.length) {
+      sel.value = matters[0].id;
+      await refreshWip();
+    }
+  }
+
+  // ====== BUTTON ACTIONS ======
+  async function clockIn() {
+    const matterId = qs("#matterSelect").value;
+    const r = await http("/time_entries/clock_in", { method:"POST", body: JSON.stringify({ matter_id: matterId }) });
+    runningEntryId = r.id;
+    toast("Clocked in");
+    await refreshWip();
+  }
+
+  async function clockOut() {
+    if (!runningEntryId) { toast("No running entry"); return; }
+    const r = await http(`/time_entries/${runningEntryId}/clock_out`, { method:"PATCH" });
+    runningEntryId = null;
+    toast(`Clocked out (${r.seconds}s)`);
+    await refreshWip();
+  }
+
+  async function quickLog() {
+    const matterId = qs("#matterSelect").value;
+    const activity = qs("#activitySelect").value;
+    await http("/time_entries/quick_log", {
+      method:"POST",
+      body: JSON.stringify({ matter_id: matterId, minutes: 60, activity_type: activity })
+    });
+    toast("+60m logged");
+    await refreshWip();
+  }
+
+  async function refreshWip() {
+    const matterId = qs("#matterSelect").value;
+    const w = await http(`/wip/summary?matter_id=${encodeURIComponent(matterId)}`);
+    const b = qs("#wipBadge");
+    const pct = Math.round((w.pct||0)*100);
+    b.textContent = `WIP: $${fmt(w.amount)} / $${fmt(w.cap)} (${pct}%)`;
+    b.classList.remove("muted");
+    b.style.background = {
+      RED:   "rgba(225,29,72,0.12)",
+      AMBER: "rgba(251,191,36,0.18)"
+    }[w.status] || "rgba(16,163,127,0.12)";
+    b.style.color = { RED:"#e11d48", AMBER:"#b45309" }[w.status] || "#10a37f";
+  }
+
+  function fmt(n){ return (n||0).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+  // ====== WIRE UI ======
+  qs("#loginBtn").addEventListener("click", login);
+  qs("#clockInBtn").addEventListener("click", ()=>wrap(clockIn));
+  qs("#clockOutBtn").addEventListener("click", ()=>wrap(clockOut));
+  qs("#quickBtn").addEventListener("click", ()=>wrap(quickLog));
+  qs("#matterSelect").addEventListener("change", ()=>wrap(refreshWip));
+
+  async function wrap(fn){
+    try { await fn(); } catch(e){ toast(e.message); console.error(e); }
+  }
+
+  // boot
+  initApp();
+</script>
+</body>
+</html>
+
