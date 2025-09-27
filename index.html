@@ -1,10 +1,29 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>DealTime — POS Time Logger</title>
-<style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>DealTime — POS Time Logger</title>
+
+  <!-- ✅ Correct place for your theme file -->
+  <link rel="stylesheet" href="aps-theme.css">
+</head>
+<body>
+  <!-- ✅ Your actual HTML goes in <body>, not inside <style> -->
+  <div class="pos-card">
+    <h2 class="pos-title">POS Logger</h2>
+    <button class="btn-primary">Export CSV</button>
+    <button class="btn-soft">+15m</button>
+    <div class="toggle"><div class="dot"></div></div>
+    <input class="input" placeholder="e.g. 12">
+    <div class="stats-label">Today</div>
+    <div class="stats-value">0 min</div>
+  </div>
+</body>
+</html>
+
+
+  // -------------------------------------styling is above ----------------------------------------
   :root{--blue:#1a5be6;--teal:#10a37f;--amber:#f59e0b;--bg:#f8fafc;--ink:#111827;--muted:#6b7280;--card:#fff}
   html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Inter}
   .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
