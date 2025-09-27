@@ -1,0 +1,112 @@
+/* ===============================
+   APS Yellow Theme Design System
+   =============================== */
+
+/* Color Tokens */
+:root {
+  --aps-bg:        #FFFBEA; /* light yellow background */
+  --aps-border:    #FEF3C7; /* pale yellow border */
+  --aps-primary:   #EAB308; /* yellow (button fill, highlights) */
+  --aps-primary-2: #CA8A04; /* darker yellow (hover, active) */
+  --aps-teal:      #0D9488; /* teal (active ON, blocks) */
+  --aps-teal-2:    #0F766E; /* darker teal (hover state) */
+  --text-strong:   #111827; /* gray-900 (titles, numbers) */
+  --text-soft:     #7C5E10; /* yellow-ish text for labels */
+}
+
+/* Card Container */
+.pos-card {
+  background: var(--aps-bg);
+  border: 1px solid var(--aps-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Title */
+.pos-title {
+  color: var(--aps-primary-2);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* Primary Button */
+.btn-primary {
+  background: var(--aps-primary);
+  color: #fff;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btn-primary:hover {
+  background: var(--aps-primary-2);
+}
+
+/* Soft (Secondary) Button */
+.btn-soft {
+  background: #FFF7CC;
+  border: 1px solid var(--aps-border);
+  color: var(--aps-primary-2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btn-soft:hover {
+  background: #FDE68A;
+}
+
+/* Toggle Switch */
+.toggle {
+  width: 44px;
+  height: 24px;
+  background: #D1D5DB;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.toggle.on {
+  background: var(--aps-teal);
+}
+.toggle .dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+.toggle.on .dot {
+  transform: translateX(20px);
+}
+
+/* Input Fields */
+.input {
+  padding: 8px 12px;
+  border: 1px solid var(--aps-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.875rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--aps-primary);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.3); /* yellow glow */
+}
+
+/* Stats Labels */
+.stats-label {
+  font-size: 0.875rem;
+  color: var(--text-soft);
+}
+.stats-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
