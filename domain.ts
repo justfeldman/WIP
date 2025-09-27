@@ -18,6 +18,31 @@ export type ActivityType = typeof ActivityType[keyof typeof ActivityType];
 
 export type UUID = string;
 
+
+// --- Buckets ---------------------------------------------------------------
+export const Bucket = {
+  HLB_THINKING: "HLB Thinking",
+  WORKSHOP: "Workshop / Whiteboard session",
+  MS_ENG_LETTER: "Morgan Stanley Eng Letter",
+  TAX_RESEARCH: "Tax Research",
+} as const;
+export type Bucket = typeof Bucket[keyof typeof Bucket];
+
+export const ALL_BUCKETS: Bucket[] = [
+  Bucket.HLB_THINKING,
+  Bucket.WORKSHOP,
+  Bucket.MS_ENG_LETTER,
+  Bucket.TAX_RESEARCH,
+];
+
+// quick guard (e.g., for validation before saving)
+export function isBucket(x: unknown): x is Bucket {
+  return typeof x === "string" && (ALL_BUCKETS as string[]).includes(x);
+}
+
+
+
+
 // ---------- Entities (what we store) ----------
 export interface User {
   id: UUID;
