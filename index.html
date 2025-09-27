@@ -418,25 +418,93 @@ const weekHeader = qs("#weekHeader");
 const weekGrid   = qs("#weekGrid");
 const weekTotals = qs("#weekTotals");
 
-function buildWeekSkeleton(baseDate=new Date()){ ... }
-function slotFromDate(d){ ... }
-function renderWeek(baseDate=new Date()){ ... }
+// Only run if Weekly Timesheet section exists
+if (weekHeader && weekGrid && weekTotals) {
 
-// initial render + hooks
-renderWeek();
-const _oldRecord = recordEntry;
-recordEntry = (args)=>{ _oldRecord(args); renderWeek(); };
-const _oldClear = qs("#clearData").onclick;
-qs("#clearData").onclick = ()=>{ if (_oldClear) _oldClear(); renderWeek(); };
-dealSelect.addEventListener('change', ()=>{ refreshTotals(); });
+  function buildWeekSkeleton(baseDate = new Date()){
+    const start = startOfWeek(baseDate); // uses your existing helper
 
-</script>
-</body>
-</html>
+    // Header row
+    weekHeader.innerHTML = `<div></div>` + Array.from({length:7}, (_,i)=>{
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      return `<div>${d.toLocaleDateString(undefined,{weekday:'short'})} ${d.getMonth()+1}/${d.getDate()}</div>`;
+    }).join("");
 
+    // Grid: 96 rows = 24h × 4 (15-min)
+    const cells = [];
+    for (let r=0; r<96; r++){
+      const isHour = r % 4 === 0;
+      const hourLabel = isHour ? String(r/4).padStart(2,'0') + ':00' : '';
+      cells.push(`<div class="timeCell">${hourLabel}</div>`);   // time column
+      for (let c=0; c<7; c++) cells.push(`<div class="slot ${isHour?'hour':''}"></div>`);
+    }
+    weekGrid.innerHTML = cells.join("");
+  }
 
+  function slotFromDate(d){
+    const h = d.getHours(), m = d.getMinutes();
+    return h*4 + Math.floor(m/15) + 1; // 1-based rows
+  }
 
-  
+  function renderWeek(baseDate = new Date()){
+    buildWeekSkeleton(baseDate);
+
+    const totals = Array(7).fill(0);
+    const start = startOfWeek(baseDate);
+    const end   = new Date(start); end.setDate(start.getDate()+7);
+
+    ENTRIES.forEach(e=>{
+      const hasTimes = e.startedAt && e.endedAt;
+      const refTime  = new Date(hasTimes ? e.startedAt : e.ts);
+      if (refTime < start || refTime >= end) return;
+
+      const dayIdx = Math.floor((refTime - start) / (24*3600*1000));
+      totals[dayIdx] += Math.max(1, e.minutes|0);
+
+      if (hasTimes){
+        const s = new Date(e.startedAt), f = new Date(e.endedAt);
+
+        const dayStart = new Date(start); dayStart.setDate(start.getDate()+dayIdx);
+        dayStart.setHours(0,0,0,0);
+        const dayEnd = new Date(dayStart); dayEnd.setHours(23,59,59,999);
+
+        const ss = new Date(Math.max(s, dayStart));
+        const ff = new Date(Math.min(f, dayEnd));
+
+        const rowStart = slotFromDate(ss);
+        const rowEnd   = Math.max(rowStart+1, slotFromDate(ff));
+        const col = 2 + dayIdx; // 1 = time column
+
+        const ev = document.createElement("div");
+        ev.className = "event";
+        ev.style.gridColumn = `${col} / ${col+1}`;
+        ev.style.gridRow    = `${rowStart} / ${rowEnd}`;
+        ev.textContent = `${e.deal} • ${Math.round((ff-ss)/60000)}m`;
+        weekGrid.appendChild(ev);
+      }
+    });
+
+    // Totals line
+    const txt = totals.map((m,i)=>{
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      return `${d.toLocaleDateString(undefined,{weekday:'short'})}: ${(m/60).toFixed(1)}h`;
+    }).join('  •  ');
+    weekTotals.textContent = txt || 'No entries this week.';
+  }
+
+  // Initial render + hooks
+  renderWeek();
+
+  const _oldRecord = recordEntry;
+  recordEntry = (args)=>{ _oldRecord(args); renderWeek(); };
+
+  const clearBtn = qs("#clearData");
+  if (clearBtn){
+    const old = clearBtn.onclick;
+    clearBtn.onclick = ()=>{ if (old) old(); renderWeek(); };
+  }
+}
+
 </script>
 </body>
 </html>
