@@ -5,51 +5,73 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>DealTime — POS Time Logger</title>
 
-  <!-- ✅ Correct place for your theme file -->
-  <link rel="stylesheet" href="aps-theme.css">
-</head>
-<body>
-  <!-- ✅ Your actual HTML goes in <body>, not inside <style> -->
-  <div class="pos-card">
-    <h2 class="pos-title">POS Logger</h2>
-    <button class="btn-primary">Export CSV</button>
-    <button class="btn-soft">+15m</button>
-    <div class="toggle"><div class="dot"></div></div>
-    <input class="input" placeholder="e.g. 12">
-    <div class="stats-label">Today</div>
-    <div class="stats-value">0 min</div>
-  </div>
-</body>
-</html>
+  <!-- APS Yellow Theme + your app styles (inline so it's truly one file) -->
+  <style>
+    /* ===============================
+       APS Yellow Theme Tokens
+       =============================== */
+    :root{
+      --aps-bg:        #FFFBEA;   /* light yellow */
+      --aps-border:    #FEF3C7;   /* pale yellow */
+      --aps-primary:   #EAB308;   /* yellow button */
+      --aps-primary-2: #CA8A04;   /* yellow hover */
+      --aps-teal:      #0D9488;   /* active/ON */
+      --aps-teal-2:    #0F766E;   /* hover teal */
+      --ink:           #111827;   /* text strong */
+      --muted:         #6b7280;   /* text muted */
+      --card:          #ffffff;   /* card white */
+      --line:          #e5e7eb;   /* gray border */
+      --bg:            #f8fafc;   /* page bg */
+    }
 
+    /* ===============================
+       Base
+       =============================== */
+    html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Inter}
+    select,input,button{font:inherit}
 
-  // -------------------------------------styling is above ----------------------------------------
-  :root{--blue:#1a5be6;--teal:#10a37f;--amber:#f59e0b;--bg:#f8fafc;--ink:#111827;--muted:#6b7280;--card:#fff}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Inter}
-  .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
-  .tabs{display:flex;gap:8px;margin-bottom:12px}
-  .tab{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
-  .tab.active{background:var(--blue);color:#fff;border-color:transparent}
-  .card{background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px}
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .grow{flex:1}
-  select,input,button{font:inherit}
-  select,input[type="text"],input[type="number"]{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
-  .btn{border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:10px 14px;cursor:pointer}
-  .btnPrimary{background:var(--blue);border-color:transparent;color:#fff}
-  .toggle{appearance:none;width:68px;height:36px;border-radius:999px;background:#e5e7eb;position:relative;cursor:pointer;border:none}
-  .toggle:checked{background:var(--teal)}
-  .toggle::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;background:#fff;border-radius:50%;transition:left .2s}
-  .toggle:checked::after{left:36px}
-  .pill{padding:6px 10px;border-radius:999px;background:#eef2ff}
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th,td{border:1px solid #e5e7eb;padding:8px;text-align:center}
-  th{background:#f3f4f6}
-  tfoot td{font-weight:700;background:#f9fafb}
-  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .key{padding:14px;border-radius:12px;background:#fff;border:1px solid #e5e7eb;text-align:center;cursor:pointer}
-  .muted{color:var(--muted)}
-</style>
+    /* ===============================
+       Layout (your original classes)
+       =============================== */
+    .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
+    .tabs{display:flex;gap:8px;margin-bottom:12px}
+    .tab{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer}
+    .tab.active{background:var(--aps-primary);color:#fff;border-color:transparent}
+    .card{background:var(--aps-bg); /* <-- yellow card background */
+          border:1px solid var(--aps-border);
+          border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .grow{flex:1}
+    .muted{color:var(--muted)}
+
+    /* ===============================
+       Controls
+       =============================== */
+    select,input[type="text"],input[type="number"]{
+      border:1px solid var(--aps-border);border-radius:12px;padding:10px;background:#fff
+    }
+    .btn{
+      border:1px solid var(--aps-border);border-radius:12px;background:#fff;padding:10px 14px;cursor:pointer
+    }
+    .btn:hover{background:#FFF7CC}
+    .btnPrimary{
+      background:var(--aps-primary);border-color:transparent;color:#fff
+    }
+    .btnPrimary:hover{background:var(--aps-primary-2)}
+    .pill{padding:6px 10px;border-radius:999px;background:#FEF3C7;color:#7C5E10;font-weight:600}
+
+    /* Toggle (kept your structure, themed colors) */
+    .toggle{appearance:none;width:68px;height:36px;border-radius:999px;background:#e5e7eb;position:relative;cursor:pointer;border:none}
+    .toggle:checked{background:var(--aps-teal)}
+    .toggle::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;background:#fff;border-radius:50%;transition:left .2s}
+    .toggle:checked::after{left:36px}
+
+    /* Table */
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid var(--line);padding:8px;text-align:center}
+    th{background:#f3f4f6}
+    tfoot td{font-weight:700;background:#f9fafb}
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -60,7 +82,8 @@
 
   <!-- POS LOGGER -->
   <section id="pos" class="card">
-    <h2 style="margin:0 0 8px">POS Logger</h2>
+    <h2 style="margin:0 0 8px;color:#7C5E10">POS Logger</h2>
+
     <div class="row">
       <div class="grow">
         <label class="muted">Deal / Job</label><br/>
@@ -114,7 +137,8 @@
         <h3 id="weekAllTotal">0 min</h3>
       </div>
       <div>
-        <button id="exportCsv" class="btn">⬇ Export CSV</button>
+        <!-- Make Export yellow primary -->
+        <button id="exportCsv" class="btn btnPrimary">⬇ Export CSV</button>
       </div>
     </div>
 
@@ -125,7 +149,7 @@
 
   <!-- DASHBOARD -->
   <section id="dash" class="card" style="display:none">
-    <h2 style="margin:0 0 8px">Dashboard</h2>
+    <h2 style="margin:0 0 8px;color:#7C5E10">Dashboard</h2>
     <div class="row">
       <div class="muted">Totals by deal. Choose range:</div>
       <input type="date" id="from"/>
@@ -150,19 +174,14 @@
 /* ================================
    CONFIG
 ==================================*/
-// If you have an HTTPS API, set it here; otherwise remains null (offline).
-const API_BASE = null; // e.g., "https://abcd-1234.ngrok-free.app"
-// Optional bearer token if your API needs it:
+const API_BASE = null;   // e.g., "https://abcd-1234.ngrok-free.app"
 const API_TOKEN = null;
 
 /* ================================
    STORAGE (local first)
-   We store time-entries like:
-   { id, deal, startedAt?, endedAt?, minutes, source, ts }
 ==================================*/
 const KEY = "dealtime_entries_v1";
 let ENTRIES = loadEntries();
-
 function loadEntries(){ try{ return JSON.parse(localStorage.getItem(KEY))||[] }catch{ return [] } }
 function saveEntries(){ localStorage.setItem(KEY, JSON.stringify(ENTRIES)) }
 
@@ -187,19 +206,18 @@ const dealSelect = qs("#dealSelect");
 const toggle = qs("#toggle");
 const status = qs("#status");
 
-function setStatus(txt, color=""){
+function setStatus(txt, bg){
   status.textContent = txt;
-  status.style.background = color || "#eef2ff";
+  status.style.background = bg || "#FEF3C7";
+  status.style.color = "#7C5E10";
 }
 
 toggle.addEventListener("change", ()=>{
   const deal = dealSelect.value;
   if (toggle.checked){
-    // start
     running = {deal, startedAt: new Date()};
-    setStatus("ON • " + deal, "rgba(16,163,127,.15)");
+    setStatus("ON • " + deal, "rgba(13,148,136,0.18)"); // teal tint
   } else {
-    // stop & record
     if (!running) return;
     const end = new Date();
     const ms = end - running.startedAt;
@@ -240,16 +258,16 @@ function recordEntry({deal, minutes, source, startedAt=null, endedAt=null}){
 }
 
 /* ================================
-   API hook (optional, HTTPS only)
+   API hook (optional)
 ==================================*/
 async function maybeSendToAPI(entry){
-  if (!API_BASE) return; // offline mode
+  if (!API_BASE) return;
   try{
     const res = await fetch(API_BASE + "/time_entries/quick_log", {
       method: "POST",
       headers: {"Content-Type":"application/json", ...(API_TOKEN?{Authorization:"Bearer "+API_TOKEN}:{})},
       body: JSON.stringify({
-        matter_id: labelToMatter(entry.deal), // map deal → matter id if you have one
+        matter_id: labelToMatter(entry.deal),
         minutes: entry.minutes,
         activity_type: entry.source
       })
@@ -261,7 +279,6 @@ async function maybeSendToAPI(entry){
     qs("#apiInfo").textContent = "offline (API error)";
   }
 }
-// simple mapper stub
 function labelToMatter(label){ return label } // replace with real mapping if needed
 
 /* ================================
@@ -281,7 +298,7 @@ function refreshTotals(){
 }
 refreshTotals();
 
-// CSV export (all local entries)
+// CSV export
 qs("#exportCsv").addEventListener("click", ()=>{
   const header = ["id","deal","minutes","source","startedAt","endedAt","ts"];
   const lines = [header.join(",")].concat(
@@ -301,7 +318,7 @@ function csvEsc(s){
   return /[",\n]/.test(str) ? `"${str.replace(/"/g,'""')}"` : str;
 }
 
-/* ---- Dashboard table ---- */
+/* Dashboard table */
 const sumBody = qs("#sumTable tbody");
 const sumMin  = qs("#sumMin");
 const sumHr   = qs("#sumHr");
@@ -317,7 +334,6 @@ function applyRange(){
   };
   const deals = ["HLB Thinking","Workshop / Whiteboard session","Morgan Stanley Eng Letter","Tax Research"];
   const rows = deals.map(d => ({deal:d, minutes: sumMinutes(e => e.deal===d && within(e))}));
-  // render
   sumBody.innerHTML = rows.map(r=>`<tr><td>${r.deal}</td><td>${r.minutes}</td><td>${(r.minutes/60).toFixed(1)}</td></tr>`).join("");
   const totalMin = rows.reduce((a,r)=>a+r.minutes,0);
   sumMin.textContent = totalMin;
@@ -331,24 +347,20 @@ qs("#clearData").addEventListener("click", ()=>{
   ENTRIES = []; saveEntries(); refreshTotals(); applyRange();
 });
 
-/* ================================
-   Tabs
-==================================*/
-qsa(".tab").forEach(t=>{
+/* Tabs */
+[...document.querySelectorAll(".tab")].forEach(t=>{
   t.addEventListener("click", ()=>{
-    qsa(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
-    qs("#pos").style.display = t.dataset.tab==="pos" ? "" : "none";
-    qs("#dash").style.display= t.dataset.tab==="dash"? "" : "none";
+    document.querySelector("#pos").style.display = t.dataset.tab==="pos" ? "" : "none";
+    document.querySelector("#dash").style.display= t.dataset.tab==="dash"? "" : "none";
   });
 });
 
-/* ================================
-   Defaults
-==================================*/
-qs("#apiInfo").textContent = API_BASE ? ("online → "+new URL(API_BASE).host) : "offline (local only)";
-const today = new Date(); qs("#from").value = today.toISOString().slice(0,10);
-qs("#to").value = today.toISOString().slice(0,10);
+/* Defaults */
+document.querySelector("#apiInfo").textContent = API_BASE ? ("online → "+new URL(API_BASE).host) : "offline (local only)";
+const today = new Date(); document.querySelector("#from").value = today.toISOString().slice(0,10);
+document.querySelector("#to").value = today.toISOString().slice(0,10);
 </script>
 </body>
 </html>
