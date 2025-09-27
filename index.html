@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DealTime — POS Time Logger</title>
+<style>
+  :root{--blue:#1a5be6;--teal:#10a37f;--amber:#f59e0b;--bg:#f8fafc;--ink:#111827;--muted:#6b7280;--card:#fff}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Inter}
+  .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
+  .tabs{display:flex;gap:8px;margin-bottom:12px}
+  .tab{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+  .tab.active{background:var(--blue);color:#fff;border-color:transparent}
+  .card{background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1}
+  select,input,button{font:inherit}
+  select,input[type="text"],input[type="number"]{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
+  .btn{border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:10px 14px;cursor:pointer}
+  .btnPrimary{background:var(--blue);border-color:transparent;color:#fff}
+  .toggle{appearance:none;width:68px;height:36px;border-radius:999px;background:#e5e7eb;position:relative;cursor:pointer;border:none}
+  .toggle:checked{background:var(--teal)}
+  .toggle::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;background:#fff;border-radius:50%;transition:left .2s}
+  .toggle:checked::after{left:36px}
+  .pill{padding:6px 10px;border-radius:999px;background:#eef2ff}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border:1px solid #e5e7eb;padding:8px;text-align:center}
+  th{background:#f3f4f6}
+  tfoot td{font-weight:700;background:#f9fafb}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .key{padding:14px;border-radius:12px;background:#fff;border:1px solid #e5e7eb;text-align:center;cursor:pointer}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="pos">POS Logger</button>
+    <button class="tab" data-tab="dash">Dashboard</button>
+  </div>
+
+  <!-- POS LOGGER -->
+  <section id="pos" class="card">
+    <h2 style="margin:0 0 8px">POS Logger</h2>
+    <div class="row">
+      <div class="grow">
+        <label class="muted">Deal / Job</label><br/>
+        <select id="dealSelect">
+          <option>HLB Thinking</option>
+          <option>Workshop / Whiteboard session</option>
+          <option>Morgan Stanley Eng Letter</option>
+          <option>Tax Research</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="muted">Live Timer</label><br/>
+        <input id="toggle" type="checkbox" class="toggle"/>
+      </div>
+
+      <div>
+        <div class="muted">Status</div>
+        <div id="status" class="pill">Idle</div>
+      </div>
+
+      <div class="grow">
+        <div class="muted">Quick Add</div>
+        <div class="row">
+          <button class="btn" data-add="15">+15m</button>
+          <button class="btn" data-add="30">+30m</button>
+          <button class="btn" data-add="60">+60m</button>
+        </div>
+      </div>
+
+      <div class="grow">
+        <div class="muted">Keypad Add (minutes)</div>
+        <div class="row">
+          <input id="manualMin" type="number" inputmode="numeric" placeholder="e.g. 12" style="width:120px"/>
+          <button id="addManual" class="btn">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div class="grow">
+        <div class="muted">Today (selected deal)</div>
+        <h3 id="todayDealTotal">0 min</h3>
+      </div>
+      <div class="grow">
+        <div class="muted">Today (all deals)</div>
+        <h3 id="todayAllTotal">0 min</h3>
+      </div>
+      <div class="grow">
+        <div class="muted">This Week (all deals)</div>
+        <h3 id="weekAllTotal">0 min</h3>
+      </div>
+      <div>
+        <button id="exportCsv" class="btn">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div style="margin-top:8px" class="muted">
+      API: <span id="apiInfo">offline (local only)</span>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dash" class="card" style="display:none">
+    <h2 style="margin:0 0 8px">Dashboard</h2>
+    <div class="row">
+      <div class="muted">Totals by deal. Choose range:</div>
+      <input type="date" id="from"/>
+      <input type="date" id="to"/>
+      <button id="applyRange" class="btn">Apply</button>
+      <button id="clearData" class="btn">🧹 Clear Local Data</button>
+    </div>
+
+    <table id="sumTable">
+      <thead>
+        <tr><th>Deal</th><th>Minutes</th><th>Hours</th></tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr><td>Total</td><td id="sumMin">0</td><td id="sumHr">0.0</td></tr>
+      </tfoot>
+    </table>
+  </section>
+</div>
+
+<script>
+/* ================================
+   CONFIG
+==================================*/
+// If you have an HTTPS API, set it here; otherwise remains null (offline).
+const API_BASE = null; // e.g., "https://abcd-1234.ngrok-free.app"
+// Optional bearer token if your API needs it:
+const API_TOKEN = null;
+
+/* ================================
+   STORAGE (local first)
+   We store time-entries like:
+   { id, deal, startedAt?, endedAt?, minutes, source, ts }
+==================================*/
+const KEY = "dealtime_entries_v1";
+let ENTRIES = loadEntries();
+
+function loadEntries(){ try{ return JSON.parse(localStorage.getItem(KEY))||[] }catch{ return [] } }
+function saveEntries(){ localStorage.setItem(KEY, JSON.stringify(ENTRIES)) }
+
+/* ================================
+   UI helpers
+==================================*/
+const qs = s => document.querySelector(s);
+const qsa = s => [...document.querySelectorAll(s)];
+function fmtMin(m){ return `${m|0} min`; }
+function sumMinutes(filterFn){ return ENTRIES.filter(filterFn).reduce((a,e)=>a+(e.minutes||0),0) }
+function todayStr(d=new Date()){ return d.toISOString().slice(0,10) }
+function startOfWeek(d=new Date()){
+  const t=new Date(d); const day=(t.getDay()+6)%7; // Mon=0
+  t.setDate(t.getDate()-day); t.setHours(0,0,0,0); return t
+}
+
+/* ================================
+   POS: Timer + Quick Add + Keypad
+==================================*/
+let running = null; // {deal, startedAt: Date}
+const dealSelect = qs("#dealSelect");
+const toggle = qs("#toggle");
+const status = qs("#status");
+
+function setStatus(txt, color=""){
+  status.textContent = txt;
+  status.style.background = color || "#eef2ff";
+}
+
+toggle.addEventListener("change", ()=>{
+  const deal = dealSelect.value;
+  if (toggle.checked){
+    // start
+    running = {deal, startedAt: new Date()};
+    setStatus("ON • " + deal, "rgba(16,163,127,.15)");
+  } else {
+    // stop & record
+    if (!running) return;
+    const end = new Date();
+    const ms = end - running.startedAt;
+    const minutes = Math.max(1, Math.round(ms/60000));
+    recordEntry({deal: running.deal, minutes, source:"switch", startedAt: running.startedAt, endedAt: end});
+    running = null;
+    setStatus("Idle");
+  }
+  refreshTotals();
+});
+
+qsa("[data-add]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const minutes = parseInt(btn.dataset.add,10);
+    recordEntry({deal: dealSelect.value, minutes, source:"quick"});
+    refreshTotals();
+  });
+});
+
+qs("#addManual").addEventListener("click", ()=>{
+  const m = parseInt(qs("#manualMin").value, 10);
+  if (!m || m <= 0) return;
+  recordEntry({deal: dealSelect.value, minutes:m, source:"keypad"});
+  qs("#manualMin").value = "";
+  refreshTotals();
+});
+
+function recordEntry({deal, minutes, source, startedAt=null, endedAt=null}){
+  const entry = {
+    id: crypto.randomUUID(),
+    deal, minutes, source,
+    startedAt: startedAt ? new Date(startedAt).toISOString() : null,
+    endedAt:   endedAt   ? new Date(endedAt).toISOString()   : null,
+    ts: new Date().toISOString()
+  };
+  ENTRIES.push(entry); saveEntries();
+  maybeSendToAPI(entry);
+}
+
+/* ================================
+   API hook (optional, HTTPS only)
+==================================*/
+async function maybeSendToAPI(entry){
+  if (!API_BASE) return; // offline mode
+  try{
+    const res = await fetch(API_BASE + "/time_entries/quick_log", {
+      method: "POST",
+      headers: {"Content-Type":"application/json", ...(API_TOKEN?{Authorization:"Bearer "+API_TOKEN}:{})},
+      body: JSON.stringify({
+        matter_id: labelToMatter(entry.deal), // map deal → matter id if you have one
+        minutes: entry.minutes,
+        activity_type: entry.source
+      })
+    });
+    if (!res.ok) throw new Error("API "+res.status);
+    qs("#apiInfo").textContent = "online → " + new URL(API_BASE).host;
+  }catch(e){
+    console.warn("API failed, kept locally", e);
+    qs("#apiInfo").textContent = "offline (API error)";
+  }
+}
+// simple mapper stub
+function labelToMatter(label){ return label } // replace with real mapping if needed
+
+/* ================================
+   Totals + Dashboard
+==================================*/
+function refreshTotals(){
+  const deal = dealSelect.value;
+  const today = todayStr();
+  const todayDealMin = sumMinutes(e => e.deal===deal && e.ts.slice(0,10)===today);
+  const todayAllMin  = sumMinutes(e => e.ts.slice(0,10)===today);
+  const weekStart = startOfWeek();
+  const weekAllMin = sumMinutes(e => new Date(e.ts) >= weekStart);
+
+  qs("#todayDealTotal").textContent = fmtMin(todayDealMin);
+  qs("#todayAllTotal").textContent  = fmtMin(todayAllMin);
+  qs("#weekAllTotal").textContent   = fmtMin(weekAllMin);
+}
+refreshTotals();
+
+// CSV export (all local entries)
+qs("#exportCsv").addEventListener("click", ()=>{
+  const header = ["id","deal","minutes","source","startedAt","endedAt","ts"];
+  const lines = [header.join(",")].concat(
+    ENTRIES.map(e=>[
+      e.id, e.deal, e.minutes, e.source,
+      e.startedAt||"", e.endedAt||"", e.ts
+    ].map(csvEsc).join(","))
+  );
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dealtime_entries.csv";
+  a.click();
+});
+function csvEsc(s){
+  const str = String(s);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g,'""')}"` : str;
+}
+
+/* ---- Dashboard table ---- */
+const sumBody = qs("#sumTable tbody");
+const sumMin  = qs("#sumMin");
+const sumHr   = qs("#sumHr");
+
+function applyRange(){
+  const from = qs("#from").value ? new Date(qs("#from").value+"T00:00:00") : null;
+  const to   = qs("#to").value   ? new Date(qs("#to").value+"T23:59:59") : null;
+  const within = e=>{
+    const t = new Date(e.ts);
+    if (from && t<from) return false;
+    if (to   && t>to)   return false;
+    return true;
+  };
+  const deals = ["HLB Thinking","Workshop / Whiteboard session","Morgan Stanley Eng Letter","Tax Research"];
+  const rows = deals.map(d => ({deal:d, minutes: sumMinutes(e => e.deal===d && within(e))}));
+  // render
+  sumBody.innerHTML = rows.map(r=>`<tr><td>${r.deal}</td><td>${r.minutes}</td><td>${(r.minutes/60).toFixed(1)}</td></tr>`).join("");
+  const totalMin = rows.reduce((a,r)=>a+r.minutes,0);
+  sumMin.textContent = totalMin;
+  sumHr.textContent  = (totalMin/60).toFixed(1);
+}
+qs("#applyRange").addEventListener("click", applyRange);
+applyRange();
+
+qs("#clearData").addEventListener("click", ()=>{
+  if (!confirm("Clear all local entries?")) return;
+  ENTRIES = []; saveEntries(); refreshTotals(); applyRange();
+});
+
+/* ================================
+   Tabs
+==================================*/
+qsa(".tab").forEach(t=>{
+  t.addEventListener("click", ()=>{
+    qsa(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    qs("#pos").style.display = t.dataset.tab==="pos" ? "" : "none";
+    qs("#dash").style.display= t.dataset.tab==="dash"? "" : "none";
+  });
+});
+
+/* ================================
+   Defaults
+==================================*/
+qs("#apiInfo").textContent = API_BASE ? ("online → "+new URL(API_BASE).host) : "offline (local only)";
+const today = new Date(); qs("#from").value = today.toISOString().slice(0,10);
+qs("#to").value = today.toISOString().slice(0,10);
+</script>
+</body>
+</html>
