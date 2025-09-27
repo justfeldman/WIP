@@ -192,6 +192,20 @@
       </tfoot>
     </table>
   </section>
+
+  </section> <!-- end Dashboard -->
+
+  <!-- WEEKLY TIMESHEET -->
+  <section id="week" class="card weekCard" style="margin-top:16px">
+    <h2>Weekly Timesheet</h2>
+    <div class="weekHeader" id="weekHeader"></div>
+    <div class="weekGrid" id="weekGrid"></div>
+    <div class="dayTotal" id="weekTotals"></div>
+  </section>
+</div> <!-- end .wrap -->
+
+
+  
 </div>
 
 <script>
@@ -385,6 +399,36 @@ qs("#clearData").addEventListener("click", ()=>{
 document.querySelector("#apiInfo").textContent = API_BASE ? ("online → "+new URL(API_BASE).host) : "offline (local only)";
 const today = new Date(); document.querySelector("#from").value = today.toISOString().slice(0,10);
 document.querySelector("#to").value = today.toISOString().slice(0,10);
+
+
+  /* … your existing JS (CSV export, Dashboard, Tabs, etc.) … */
+
+/* ================================
+   Weekly Timesheet (calendar-style)
+==================================*/
+const weekHeader = qs("#weekHeader");
+const weekGrid   = qs("#weekGrid");
+const weekTotals = qs("#weekTotals");
+
+function buildWeekSkeleton(baseDate=new Date()){ ... }
+function slotFromDate(d){ ... }
+function renderWeek(baseDate=new Date()){ ... }
+
+// initial render + hooks
+renderWeek();
+const _oldRecord = recordEntry;
+recordEntry = (args)=>{ _oldRecord(args); renderWeek(); };
+const _oldClear = qs("#clearData").onclick;
+qs("#clearData").onclick = ()=>{ if (_oldClear) _oldClear(); renderWeek(); };
+dealSelect.addEventListener('change', ()=>{ refreshTotals(); });
+
+</script>
+</body>
+</html>
+
+
+
+  
 </script>
 </body>
 </html>
