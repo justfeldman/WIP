@@ -66,11 +66,26 @@ export interface Event {
 }
 
 // ---------- Outputs (what APIs return) ----------
-export interface WipSummary {
-  amount: number;       // $ total
-  cap: number;          // $ cap
-  pct: number;          // 0..1
+// one bucket’s numbers
+export interface WipBucketSummary {
+  bucket: string;          // e.g. "HLB Thinking"
+  minutes: number;
+  hours: number;
+  amount: number;
+  pct: number;
   status: "GREEN" | "AMBER" | "RED";
+}
+
+// full WIP summary including buckets
+export interface WipSummary {
+  amount: number;       // overall $
+  cap: number;          // overall cap $
+  pct: number;          // overall fraction
+  status: "GREEN" | "AMBER" | "RED";
+  minutes: number;      // overall minutes
+  hours: number;        // overall hours
+  ratePerHour: number;  // assumption used
+  buckets: WipBucketSummary[]; // breakdown
 }
 
 // ---------- Inputs (what APIs accept) ----------
