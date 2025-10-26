@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HLB Timesheet + Next-Week Estimator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --hlb-blue:#0B3D91; /* deep HLB blue */
+      --hlb-sky:#1e90ff; /* accent blue */
+      --hlb-black:#0b0d13; /* near-black */
+      --ink:#0f172a; /* slate-900 */
+      --muted:#56607a; /* slate-500 */
+      --panel:#0f1524; /* deep navy for panels */
+      --bg:#0a0d18; /* page background */
+      --green:#29c48a;
+      --amber:#ffb703;
+      --red:#ff4d4d;
+      --ring:0 0 0 3px rgba(30,144,255,.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:#e8ecf5; background:radial-gradient(1200px 1200px at -10% -10%, #102147 0%, var(--bg) 55%) fixed;
+    }
+    .wrap{max-width:1180px; margin:28px auto; padding:0 16px}
+    header{
+      display:flex; align-items:center; gap:14px; margin-bottom:18px;
+    }
+    .logo{width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,var(--hlb-blue),#0a2f70); display:grid; place-items:center; box-shadow:0 8px 30px rgba(11,61,145,.35)}
+    .logo span{font-weight:800; letter-spacing:1px}
+    .title h1{font-size:20px; margin:0 0 4px 0}
+    .title small{color:#9fb0d0}
+    .topbar{
+      display:flex; gap:12px; flex-wrap:wrap; margin-top:8px
+    }
+    .badge{padding:6px 10px; border:1px solid rgba(255,255,255,.08); border-radius:999px; font-size:12px; color:#cfe1ff; background:rgba(11,61,145,.15)}
+
+    .grid{display:grid; grid-template-columns: 1.3fr .9fr; gap:22px}
+
+    .card{
+      background:linear-gradient(180deg, rgba(25,36,66,.65), rgba(13,18,34,.72));
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.35)
+    }
+    .card h2{margin:0 0 10px 0; font-size:15px; letter-spacing:.25px}
+    .sub{color:#a9b6cf; font-size:12px; margin-top:-6px; margin-bottom:12px}
+
+    .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+    .btn{appearance:none; border:none; padding:9px 12px; border-radius:12px; background:#142039; color:#dbe7ff; cursor:pointer; font-weight:600; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08)}
+    .btn:hover{box-shadow: inset 0 0 0 1px rgba(30,144,255,.65);}
+    .btn.primary{background:linear-gradient(180deg, #1a4fbf, #0b3d91); box-shadow:0 8px 18px rgba(11,61,145,.4)}
+    .btn.ghost{background:transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14)}
+
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    input[type="text"], input[type="number"], select{
+      background:#0f1524; color:#e8ecf5; border:1px solid rgba(255,255,255,.12); padding:10px 12px; border-radius:12px; outline:none; min-width:120px
+    }
+    input[type="number"]{width:110px}
+    input:focus, select:focus{box-shadow:var(--ring); border-color:#1e90ff}
+
+    table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13px}
+    th,td{padding:10px 10px; border-bottom:1px dashed rgba(255,255,255,.07); text-align:center}
+    th{color:#a9b6cf; font-weight:600}
+    td:first-child, th:first-child{ text-align:left }
+
+    .statbar{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:10px 0 0}
+    .kpi{background:#0f1524; border:1px solid rgba(255,255,255,.07); padding:12px; border-radius:12px}
+    .kpi .v{font-size:20px; font-weight:800}
+    .kpi .l{color:#a9b6cf; font-size:12px}
+
+    .pill{padding:6px 10px; border-radius:999px; background:#0f1524; border:1px solid rgba(255,255,255,.07); color:#9fb0d0; font-size:12px}
+
+    .footer{margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+    .link{font-size:12px; color:#9fb0d0}
+
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+
+    .notice{font-size:12px; color:#9fb0d0; background:#0f1524; border:1px solid rgba(255,255,255,.07); padding:10px; border-radius:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo"><span>HLB</span></div>
+      <div class="title">
+        <h1>Timesheet + Next‑Week Estimator</h1>
+        <div class="topbar">
+          <span class="badge">Theme: Black & Blue</span>
+          <span class="badge">Local‑only (no server)</span>
+          <span class="badge">Share via CSV</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: PERSONAL LOGGER / ESTIMATOR -->
+      <section class="card" id="youCard">
+        <h2>Your Hours (This Week) & Quick Logger</h2>
+        <div class="sub">Use quick‑add to log minutes, or type minutes and press Add. Data is saved in your browser.
+        </div>
+
+        <div class="controls row" style="margin-bottom:10px">
+          <input id="deal" type="text" placeholder="Deal / Job e.g., HLB Thinking" />
+          <select id="daySel"></select>
+          <input id="minsInput" type="number" min="0" step="15" value="15"/> 
+          <button class="btn" onclick="quickAdd(15)">+15m</button>
+          <button class="btn" onclick="quickAdd(30)">+30m</button>
+          <button class="btn" onclick="quickAdd(60)">+60m</button>
+          <button class="btn primary" onclick="addMinutes()">Add</button>
+          <button class="btn ghost" onclick="resetWeek()">Reset Week</button>
+        </div>
+
+        <table id="youTable">
+          <thead>
+            <tr><th>Day</th><th>Deal / Job</th><th>Minutes</th><th>Hrs</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr><th colspan="2">Total</th><th id="youTotalM">0</th><th id="youTotalH">0.0</th><th></th></tr>
+          </tfoot>
+        </table>
+
+        <div class="statbar">
+          <div class="kpi"><div class="v" id="kpiToday">0h</div><div class="l">Today</div></div>
+          <div class="kpi"><div class="v" id="kpiWeek">0h</div><div class="l">This Week</div></div>
+          <div class="kpi"><div class="v" id="kpiAvg">0.0h</div><div class="l">Avg / Day</div></div>
+        </div>
+
+        <div class="footer">
+          <div class="row">
+            <button class="btn" onclick="downloadCSV('my_week_hours.csv', serializeYouCSV())">Export CSV</button>
+            <button class="btn" onclick="copyShare()">Copy Share Code</button>
+          </div>
+          <span class="link">Tip: paste your share code into Team → “Add Member via Code”.</span>
+        </div>
+      </section>
+
+      <!-- RIGHT: TEAM ESTIMATOR / NEXT WEEK -->
+      <section class="card">
+        <h2>Next‑Week Estimator (Team View)</h2>
+        <div class="sub">Upload a CSV of teammates’ daily estimates or paste share codes. See totals and variance. CSV format: <em>Name, Mon, Tue, Wed, Thu, Fri, Sat, Sun</em> (hours).</div>
+        <div class="grid-2">
+          <div>
+            <label class="pill">Your next‑week plan</label>
+            <table id="nextTable">
+              <thead><tr><th>Day</th><th>Planned Hours</th></tr></thead>
+              <tbody id="nextBody"></tbody>
+              <tfoot><tr><th>Total</th><th id="nextTotal">0.0</th></tr></tfoot>
+            </table>
+            <div class="row" style="margin-top:10px">
+              <button class="btn" onclick="saveNextWeek()">Save Plan</button>
+              <button class="btn" onclick="downloadCSV('my_next_week.csv', serializeNextCSV())">Export Plan CSV</button>
+            </div>
+          </div>
+          <div>
+            <label class="pill">Team estimates</label>
+            <input type="file" accept=".csv" onchange="handleCSV(event)" />
+            <div class="row" style="margin-top:8px">
+              <input id="sharePaste" type="text" placeholder="Paste share code" style="flex:1" />
+              <button class="btn" onclick="addMemberFromCode()">Add Member via Code</button>
+            </div>
+            <table id="teamTable" style="margin-top:10px">
+              <thead><tr><th>Member</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th><th>Total</th><th></th></tr></thead>
+              <tbody></tbody>
+              <tfoot><tr><th>Team Total</th><th colspan="8" id="teamTotal" style="text-align:right">0.0</th><th></th></tr></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h2 style="margin:0 0 8px 0">Load & Capacity</h2>
+          <div class="sub">Compare team total vs capacity target (e.g., 40h/person). Adjust as needed.</div>
+          <div class="row" style="margin-bottom:8px">
+            <label class="pill">People count</label>
+            <input id="people" type="number" min="1" value="3" />
+            <label class="pill">Capacity / person (h)</label>
+            <input id="cap" type="number" min="1" step="0.5" value="40" />
+            <button class="btn" onclick="updateCapacity()">Update</button>
+          </div>
+          <canvas id="bar" height="110"></canvas>
+          <div class="notice" id="capNote">Team 0.0h vs capacity 120h → variance −120.0h</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer" style="margin-top:22px">
+      <div class="row">
+        <button class="btn primary" onclick="printView()">Print / PDF</button>
+        <button class="btn" onclick="downloadHTML()">Download This Site (.html)</button>
+      </div>
+      <span class="link">© HLB (demo). Local storage only; bring your own CSVs for team merging.
+      </span>
+    </div>
+  </div>
+
+<script>
+  /* ===== UTIL ===== */
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const todayIdx = (new Date().getDay()+6)%7; // Mon=0
+
+  function fmtH(m){return (m/60).toFixed(1)}
+  function sum(arr){return arr.reduce((a,b)=>a+b,0)}
+  function downloadCSV(filename, csv){
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+  }
+  function downloadHTML(){
+    const html = document.documentElement.outerHTML;
+    const blob = new Blob([html], {type:'text/html;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='HLB_Timesheet_Estimator.html'; a.click(); URL.revokeObjectURL(url);
+  }
+  function printView(){ window.print() }
+
+  /* ===== YOUR WEEK LOGGER ===== */
+  let you = JSON.parse(localStorage.getItem('hlb_you')||'[]');
+
+  function saveYou(){ localStorage.setItem('hlb_you', JSON.stringify(you)); renderYou() }
+
+  function quickAdd(min){ document.getElementById('minsInput').value = min; addMinutes(); }
+
+  function addMinutes(){
+    const deal = document.getElementById('deal').value.trim() || 'General';
+    const day = document.getElementById('daySel').value;
+    const mins = parseInt(document.getElementById('minsInput').value||0,10);
+    if(!mins || mins<0) return;
+    you.push({day, deal, mins}); saveYou();
+  }
+
+  function delRow(idx){ you.splice(idx,1); saveYou() }
+
+  function resetWeek(){ if(confirm('Clear your week?')) { you = []; saveYou() } }
+
+  function renderYou(){
+    const tb = document.querySelector('#youTable tbody'); tb.innerHTML='';
+    let total=0, today=0; const byDay = Object.fromEntries(days.map(d=>[d,0]));
+    you.forEach((r,i)=>{
+      total+=r.mins; byDay[r.day]+=r.mins; if(r.day===days[todayIdx]) today+=r.mins;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r.day}</td><td>${r.deal}</td><td>${r.mins}</td><td>${fmtH(r.mins)}</td><td><button class='btn' onclick='delRow(${i})'>×</button></td>`; tb.appendChild(tr);
+    })
+    document.getElementById('youTotalM').textContent = total;
+    document.getElementById('youTotalH').textContent = fmtH(total);
+    document.getElementById('kpiToday').textContent = fmtH(today)+"h";
+    document.getElementById('kpiWeek').textContent = fmtH(total)+"h";
+    document.getElementById('kpiAvg').textContent = (total/60/7).toFixed(1)+"h";
+  }
+
+  function serializeYouCSV(){
+    let out = 'Day,Deal,Minutes,Hours\n';
+    you.forEach(r=>{ out += `${r.day},${r.deal},${r.mins},${(r.mins/60).toFixed(2)}\n`});
+    out += `Total,,${you.reduce((a,b)=>a+b.mins,0)},${(you.reduce((a,b)=>a+b.mins,0)/60).toFixed(2)}\n`;
+    return out;
+  }
+
+  function copyShare(){
+    // Simple share code: base64 of JSON compacted
+    const code = btoa(unescape(encodeURIComponent(JSON.stringify({name:'You', hours: nextWeek}))));
+    navigator.clipboard.writeText(code);
+    alert('Share code copied. Send it to the team.');
+  }
+
+  /* day options */
+  const daySel=document.getElementById('daySel');
+  days.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d; o.textContent = `${d}${i===todayIdx?' (today)':''}`; daySel.appendChild(o) });
+  daySel.value = days[todayIdx];
+
+  /* ===== NEXT WEEK (PERSONAL) ===== */
+  let nextWeek = JSON.parse(localStorage.getItem('hlb_next')||'{}');
+  days.forEach(d=>{ if(!(d in nextWeek)) nextWeek[d]=0 })
+
+  function renderNext(){
+    const tbody=document.getElementById('nextBody'); tbody.innerHTML='';
+    let tot=0; days.forEach(d=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${d}</td><td><input type='number' min='0' step='0.25' value='${nextWeek[d]}' oninput='updNext("${d}", this.value)'/></td>`;
+      tbody.appendChild(tr); tot+=Number(nextWeek[d])
+    })
+    document.getElementById('nextTotal').textContent = tot.toFixed(1);
+    updateCapacity();
+  }
+  function updNext(day, v){ nextWeek[day]=Number(v||0); saveNextWeek() }
+  function saveNextWeek(){ localStorage.setItem('hlb_next', JSON.stringify(nextWeek)); renderNext(); }
+  function serializeNextCSV(){
+    const vals = days.map(d=> nextWeek[d]);
+    return `Name,${days.join(',')}\nYou,${vals.join(',')}\n`;
+  }
+
+  /* ===== TEAM ESTIMATES ===== */
+  let team=[]; // {name, Mon..Sun}
+
+  function handleCSV(e){
+    const file=e.target.files[0]; if(!file) return; const reader=new FileReader();
+    reader.onload=()=>{ parseCSV(reader.result) }; reader.readAsText(file);
+  }
+  function parseCSV(text){
+    const lines = text.trim().split(/\r?\n/);
+    if(!lines.length) return;
+    const hdr = lines[0].split(',').map(s=>s.trim().toLowerCase());
+    const idx = {name: hdr.indexOf('name')}; days.forEach(d=> idx[d]=hdr.indexOf(d.toLowerCase()));
+    team = lines.slice(1).map(line=>{
+      const cols=line.split(',');
+      const obj={name: (cols[idx.name]||'Member').trim()}; days.forEach(d=> obj[d]=Number(cols[idx[d]]||0)); return obj;
+    });
+    renderTeam();
+  }
+  function addMemberFromCode(){
+    const code = document.getElementById('sharePaste').value.trim(); if(!code) return;
+    try{
+      const obj = JSON.parse(decodeURIComponent(escape(atob(code))));
+      const name = obj.name||'Member'; const hrs=obj.hours||{}; const rec={name};
+      days.forEach(d=> rec[d]=Number(hrs[d]||0)); team.push(rec); renderTeam();
+      document.getElementById('sharePaste').value='';
+    }catch(err){ alert('Invalid code'); }
+  }
+  function delMember(i){ team.splice(i,1); renderTeam() }
+  function renderTeam(){
+    const tb=document.querySelector('#teamTable tbody'); tb.innerHTML='';
+    let tot=0; team.forEach((m,i)=>{
+      const vals=days.map(d=>Number(m[d]||0)); const subt=sum(vals);
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${m.name}</td>${vals.map(v=>`<td>${v.toFixed(1)}</td>`).join('')}<td>${subt.toFixed(1)}</td><td><button class='btn' onclick='delMember(${i})'>×</button></td>`;
+      tb.appendChild(tr); tot+=subt;
+    })
+    document.getElementById('teamTotal').textContent = tot.toFixed(1);
+    updateCapacity();
+  }
+
+  /* ===== CAPACITY CHART ===== */
+  let chart;
+  function updateCapacity(){
+    const people = Number(document.getElementById('people').value||1);
+    const cap = Number(document.getElementById('cap').value||40);
+    const your = days.map(d=> Number(nextWeek[d]||0));
+    const yourTotal = sum(your);
+    const teamTotal = team.reduce((a,m)=> a + days.reduce((s,d)=>s+Number(m[d]||0),0), 0);
+    const allTotal = yourTotal + teamTotal;
+    const capacity = people * cap;
+    const variance = (allTotal - capacity).toFixed(1);
+
+    document.getElementById('capNote').textContent = `Team ${allTotal.toFixed(1)}h vs capacity ${capacity.toFixed(1)}h → variance ${variance>0?'+':''}${variance}h`;
+
+    const ctx=document.getElementById('bar');
+    const data={labels:['Your Plan','Team (others)','Capacity'], datasets:[{label:'Hours', data:[yourTotal, teamTotal, capacity]}]};
+    const opt={responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}}};
+    if(chart){ chart.data=data; chart.update(); } else { chart = new Chart(ctx, {type:'bar', data, options:opt}); }
+  }
+
+  // INIT
+  renderYou(); renderNext(); renderTeam(); updateCapacity();
+</script>
+</body>
+</html>
